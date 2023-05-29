@@ -1,8 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.IO;
 using System.Runtime.InteropServices;
-using System.Text;
 using LLama.Exceptions;
 
 namespace LLama.Native
@@ -26,9 +23,9 @@ namespace LLama.Native
             }
             NativeApi.llama_init_backend();
         }
-        private const string libraryName = "libllama";
+        private const string libraryName = "llama";
 
-        [DllImport("libllama", EntryPoint = "llama_mmap_supported")]
+        [DllImport("llama", EntryPoint = "llama_mmap_supported")]
         public static extern bool llama_empty_call();
 
         [DllImport(libraryName)]

@@ -11,7 +11,7 @@ namespace LLama.Examples
         ChatSession<LLamaModel> _session;
         public ChatSession(string modelPath, string promptFilePath, string[] antiprompt)
         {
-            LLamaModel model = new(new LLamaParams(model: modelPath, n_ctx: 512, interactive: true, repeat_penalty: 1.0f, verbose_prompt: false));
+            LLamaModel model = new(new LLamaParams(model: modelPath, n_ctx: 512, interactive: true, repeat_penalty: 1.0f, verbose_prompt: false, n_gpu_layers: 20));
             _session = new ChatSession<LLamaModel>(model)
                 .WithPromptFile(promptFilePath)
                 .WithAntiprompt(antiprompt);

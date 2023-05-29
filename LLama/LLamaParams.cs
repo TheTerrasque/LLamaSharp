@@ -49,6 +49,8 @@ namespace LLama
         public bool interactive_first = false; // wait for user input immediately
 
         public bool instruct = false; // instruction mode (used for Alpaca models)
+        public string instruct_prefix = "\n\n### Instruction:\n\n"; // string to prefix user inputs with
+        public string instruct_suffix = "\n\n### Response:\n\n"; // string to suffix user inputs with
         public bool penalize_nl = true; // consider newlines as a repeatable token
         public bool perplexity = false; // compute perplexity over the prompt
         public bool use_mmap = true; // use mmap for faster loads

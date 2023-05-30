@@ -8,26 +8,24 @@ public class ChatService
 
     public ChatService()
     {
-        LLamaModel model = new(new LLamaParams(model: @"ggml-model-q4_0.bin", n_ctx: 512, interactive: true, repeat_penalty: 1.0f, verbose_prompt: false));
+        ModelName = "Manticore-13B-Chat-Pyg.ggmlv3.q5_1.bin";
+        LLamaModel model = new(new LLamaParams(model: @"C:\temp\models\Manticore-13B-Chat-Pyg.ggmlv3.q5_1.bin", n_ctx: 2048, interactive: true, repeat_penalty: 1.1f, verbose_prompt: false, n_gpu_layers: 17));
         _session = new ChatSession<LLamaModel>(model)
-            .WithPromptFile(@"Assets\chat-with-bob.txt")
-            .WithAntiprompt(new string[] { "User:" });
+            .WithPromptFile(@"Assets/Assistant.txt")
+            .WithAntiprompt(new string[] { "User:", "user:" });
     }
 
-    public string Send(SendMessageInput input)
-    {
-        Console.ForegroundColor = ConsoleColor.Green;
-        Console.WriteLine(input.Text);
+    public string ModelName { get; internal set; }
 
-        Console.ForegroundColor = ConsoleColor.White;
-        var outputs = _session.Chat(input.Text);
+    public string Send(string text)
+    {
+        var outputs = _session.Chat("User: " + text);
         var result = "";
         foreach (var output in outputs)
         {
-            Console.Write(output);
             result += output;
         }
 
-        return result;
+        return result.Replace("Assistant:", "").Replace("assistant:", "").Replace("User:", "").Replace("user:", "").Replace("ASSISTANT:", "").Trim();
     }
 }

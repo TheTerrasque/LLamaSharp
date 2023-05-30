@@ -8,14 +8,18 @@ namespace LLama.Examples
 {
     public class ChatSession
     {
+        Random rnd = new Random();
         ChatSession<LLamaModel> _session;
         public ChatSession(string modelPath, string promptFilePath, string[] antiprompt)
         {
-            LLamaModel model = new(new LLamaParams(model: modelPath, n_ctx: 512, interactive: true, repeat_penalty: 1.0f, verbose_prompt: false, n_gpu_layers: 20));
+            LLamaModel model = new(new LLamaParams(rnd.Next(), model: modelPath, 
+                n_ctx: 2048, interactive: true, repeat_penalty: 1.10f, 
+                verbose_prompt: false, n_gpu_layers: 17));
             _session = new ChatSession<LLamaModel>(model)
                 .WithPromptFile(promptFilePath)
                 .WithAntiprompt(antiprompt);
         }
+
 
         public void Run()
         {

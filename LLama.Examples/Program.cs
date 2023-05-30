@@ -21,7 +21,7 @@ while (true)
     {
         Console.Write("Please input your model path: ");
         var modelPath = Console.ReadLine();
-        ChatSession chat = new(modelPath, "Assets/chat-with-bob.txt", new string[] { "User:" });
+        ChatSession chat = new(modelPath, "Assets/chat-with-bob.txt", new string[] { "User:", "user:" });
         chat.Run();
     }
     else if (choice == 1)

@@ -30,7 +30,7 @@ namespace LLama
         }
 
         public BaseLLamaModel(ILLamaParams Params, string encoding = "UTF-8") {
-            _log = Log.ForContext<BaseLLamaModel>();
+            _log = Log.ForContext<BaseLLamaModel>().ForContext("ModelParams", Params);
             _params = Params;
             _encoding = encoding;
             _log.Information("Initializing LLama model with params: {@modelParams}", _params);
@@ -41,6 +41,7 @@ namespace LLama
         private void _process_tokens(List<Int32> tokens, CancellationToken ct)
         {
             var log = _log.ForContext("Function","_process_tokens");
+
             // Find out which tokens are the same as in the previous call
             var skip_tokens = 0;
             for (int i = 0; i < tokens.Count; i++)
@@ -54,11 +55,16 @@ namespace LLama
                     skip_tokens++;
                 }
             }
-            log.Debug("Skipping {skipTokens} tokens out of {tokenCount}. TokenHistory is {tokenHistoryCount}", skip_tokens, tokens.Count, _token_history.Count);
-            // Process the new tokens
+            log.Debug("Skipping {skipTokens} tokens out of {tokenCount}. TokenHistory length is {tokenHistoryCount}", 
+                skip_tokens, tokens.Count, _token_history.Count);
+            
             while (skip_tokens < tokens.Count && ct.IsCancellationRequested == false) {
-                log.Debug("Processing batch of max {n_batch} tokens. Tokens: {tokenCount}, skip_tokens: {skipTokens}", _params.n_batch, tokens.Count, skip_tokens);
+                
+                log.Debug("Processing batch of max {n_batch} tokens. Tokens: {tokenCount}, skip_tokens: {skipTokens}", 
+                    _params.n_batch, tokens.Count, skip_tokens);
+
                 var tokens_to_process = tokens.Skip(skip_tokens).Take(_params.n_batch).ToArray();
+                
                 using (log.OperationAt(Serilog.Events.LogEventLevel.Debug).Time("Process {tokens} tokens", tokens_to_process.Length))
                 {
                     var eval_result = NativeApi.llama_eval(_ctx, tokens_to_process, tokens_to_process.Length, skip_tokens, _params.n_threads);
@@ -79,15 +85,16 @@ namespace LLama
 
             Int32 id = 0;
 
-            var n_vocab = NativeApi.llama_n_vocab(_ctx);
-            var logits = Utils.llama_get_logits(_ctx, n_vocab);
+            var model_vocabulary = NativeApi.llama_n_vocab(_ctx);
+            var logits = Utils.llama_get_logits(_ctx, model_vocabulary);
 
             // Apply params.logit_bias map
             foreach (var (key, value) in samplingParams.logit_bias) logits[key] += value;
 
+            // Create candidates
             var candidates = new List<LLamaTokenData>();
-            candidates.Capacity = n_vocab;
-            for (Int32 token_id = 0; token_id < n_vocab; token_id++)
+            candidates.Capacity = model_vocabulary;
+            for (Int32 token_id = 0; token_id < model_vocabulary; token_id++)
             {
                 candidates.Add(new LLamaTokenData(token_id, logits[token_id], 0.0f));
             }
@@ -150,8 +157,11 @@ namespace LLama
 
         public IEnumerable<string> Generate(string text, CancellationToken ct, ILlamaSamplingParams? samplingParams = null) {
             var tokens = Utils.llama_tokenize(_ctx, text, true, _encoding);
+
             if (samplingParams == null) samplingParams = new LLamaSamplingParams();
+
             _log.Information("Generating text with params: {@samplingParams}", samplingParams);
+            
             while (ct.IsCancellationRequested == false)
             {
                 _process_tokens(tokens, ct);

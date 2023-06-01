@@ -7,13 +7,14 @@ using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.IO;
+using LLama.Interfaces;
 
 namespace LLama
 {
     using llama_token = Int32;
     internal static class Utils
     {
-        public static SafeLLamaContextHandle llama_init_from_gpt_params(ref LLamaParams @params)
+        public static SafeLLamaContextHandle llama_init_from_gpt_params(ref ILLamaParams @params)
         {
             var lparams = NativeApi.llama_context_default_params();
 
@@ -65,6 +66,15 @@ namespace LLama
             return res.Take(n).ToList();
         }
 
+        /// <summary>
+        /// Token logits obtained from the last call to llama_eval()
+        /// The logits for the last token are stored in the last row
+        /// Can be mutated in order to change the probabilities of the next token
+        /// Rows: n_tokens
+        /// Cols: n_vocab
+        /// </summary>
+        /// <param name="ctx"></param>
+        /// <returns></returns>
         public unsafe static Span<float> llama_get_logits(SafeLLamaContextHandle ctx, int length)
         {
             var logits = NativeApi.llama_get_logits(ctx);

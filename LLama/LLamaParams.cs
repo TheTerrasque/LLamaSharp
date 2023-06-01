@@ -1,60 +1,61 @@
 ﻿using System;
 using System.Collections.Generic;
+using LLama.Interfaces;
 
 namespace LLama
 {
     using llama_token = Int32;
-    public struct LLamaParams
+    public struct LLamaParams: ILLamaParams, ILlamaSamplingParams
     {
-        public int seed; // RNG seed
-        public int n_threads = Math.Max(Environment.ProcessorCount / 2, 1); // number of threads (-1 = autodetect)
-        public int n_predict = -1; // new tokens to predict
-        public int n_ctx = 512; // context size
-        public int n_batch = 512; // batch size for prompt processing (must be >=32 to use BLAS)
+        public int seed { get; set; } // RNG seed
+        public int n_threads { get; set; } = Math.Max(Environment.ProcessorCount / 2, 1); // number of threads (-1 = autodetect)
+        public int n_predict { get; set; } = -1; // new tokens to predict
+        public int n_ctx { get; set; } = 512; // context size
+        public int n_batch { get; set; } = 512; // batch size for prompt processing (must be >=32 to use BLAS)
         public int n_keep = 0; // number of tokens to keep from initial prompt
-        public int n_gpu_layers = -1;   // number of layers to store in VRAM
+        public int n_gpu_layers { get; set; } = -1;   // number of layers to store in VRAM
 
         // sampling parameters
-        public Dictionary<llama_token, float> logit_bias; // logit bias for specific tokens
-        public int top_k = 40; // <= 0 to use vocab size
-        public float top_p = 0.95f; // 1.0 = disabled
-        public float tfs_z = 1.00f; // 1.0 = disabled
-        public float typical_p = 1.00f; // 1.0 = disabled
-        public float temp = 0.80f; // 1.0 = disabled
-        public float repeat_penalty = 1.10f; // 1.0 = disabled
-        public int repeat_last_n = 64; // last n tokens to penalize (0 = disable penalty, -1 = context size)
-        public float frequency_penalty = 0.00f; // 0.0 = disabled
-        public float presence_penalty = 0.00f; // 0.0 = disabled
-        public int mirostat = 0; // 0 = disabled, 1 = mirostat, 2 = mirostat 2.0
-        public float mirostat_tau = 5.00f; // target entropy
-        public float mirostat_eta = 0.10f; // learning rate
+        public Dictionary<llama_token, float> logit_bias { get; set; } // logit bias for specific tokens
+        public int top_k { get; set; } = 40; // <= 0 to use vocab size
+        public float top_p { get; set; } = 0.95f; // 1.0 = disabled
+        public float tfs_z { get; set; } = 1.00f; // 1.0 = disabled
+        public float typical_p { get; set; } = 1.00f; // 1.0 = disabled
+        public float temp { get; set; } = 0.80f; // 1.0 = disabled
+        public float repeat_penalty { get; set; }= 1.10f; // 1.0 = disabled
+        public int repeat_last_n { get; set; }= 64; // last n tokens to penalize (0 = disable penalty, -1 = context size)
+        public float frequency_penalty { get; set; }= 0.00f; // 0.0 = disabled
+        public float presence_penalty { get; set; }= 0.00f; // 0.0 = disabled
+        public int mirostat { get; set; }= 0; // 0 = disabled, 1 = mirostat, 2 = mirostat 2.0
+        public float mirostat_tau { get; set; }= 5.00f; // target entropy
+        public float mirostat_eta { get; set; }= 0.10f; // learning rate
 
-        public string model = "models/lamma-7B/ggml-model.bin"; // model path
+        public string model { get; set; } = "models/lamma-7B/ggml-model.bin"; // model path
         public string prompt = ""; // initial prompt (set to empty string for interactive mode)
         public string path_session = ""; // path to file for saving/loading model eval state
         public string input_prefix = ""; // string to prefix user inputs with
         public string input_suffix = ""; // string to suffix user inputs with
         public List<string> antiprompt; // string upon seeing which more user input is prompted
 
-        public string lora_adapter = ""; // lora adapter path
-        public string lora_base = ""; // base model path for the lora adapter
+        public string lora_adapter { get; set; } = ""; // lora adapter path
+        public string lora_base { get; set; } = ""; // base model path for the lora adapter
 
-        public bool memory_f16 = true; // use f16 instead of f32 for memory kv
+        public bool memory_f16 { get; set; } = true; // use f16 instead of f32 for memory kv
         public bool random_prompt = false; // randomize prompt if none provided
         public bool use_color = false; // use color to distinguish generations and inputs
         public bool interactive = false; // interactive mode
         public bool prompt_cache_all = false; // save user input and generations to prompt cache
 
-        public bool embedding = false; // get only sentence embedding
+        public bool embedding { get; set; } = false; // get only sentence embedding
         public bool interactive_first = false; // wait for user input immediately
 
         public bool instruct = false; // instruction mode (used for Alpaca models)
         public string instruct_prefix = "\n\n### Instruction:\n\n"; // string to prefix user inputs with
         public string instruct_suffix = "\n\n### Response:\n\n"; // string to suffix user inputs with
-        public bool penalize_nl = true; // consider newlines as a repeatable token
-        public bool perplexity = false; // compute perplexity over the prompt
-        public bool use_mmap = true; // use mmap for faster loads
-        public bool use_mlock = false; // use mlock to keep model in memory
+        public bool penalize_nl { get; set; } = true; // consider newlines as a repeatable token
+        public bool perplexity { get; set; } = false; // compute perplexity over the prompt
+        public bool use_mmap { get; set; } = true; // use mmap for faster loads
+        public bool use_mlock { get; set; } = false; // use mlock to keep model in memory
         public bool mem_test = false; // compute maximum memory usage
         public bool verbose_prompt = false; // print prompt tokens before generation
 

@@ -176,6 +176,11 @@ namespace LLama.Native
         [DllImport(libraryName)] 
         public static extern int llama_tokenize(SafeLLamaContextHandle ctx, string text, llama_token[] tokens, int n_max_tokens, bool add_bos);
 
+        /// <summary>
+        /// Get the number of tokens in the vocabulary
+        /// </summary>
+        /// <param name="ctx"></param>
+        /// <returns></returns>
         [DllImport(libraryName)]
         public static extern int llama_n_vocab(SafeLLamaContextHandle ctx);
 
@@ -221,6 +226,11 @@ namespace LLama.Native
         [DllImport(libraryName)]
         public static extern llama_token llama_token_eos();
 
+
+        /// <summary>
+        /// Newline token
+        /// </summary>
+        /// <returns></returns>
         [DllImport(libraryName)]
         public static extern llama_token llama_token_nl();
 

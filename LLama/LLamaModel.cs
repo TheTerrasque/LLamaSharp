@@ -2,6 +2,7 @@
 using LLama.Types;
 using LLama.Extensions;
 using LLama.Native;
+using LLama.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -32,6 +33,9 @@ namespace LLama
         // if we loaded a session with at least 75% similarity. It's currently just used to speed up the
         // initial prompt so it doesn't need to be an exact match.
         bool _need_to_save_session;
+        /// <summary>
+        /// The number of tokens to use from previous llama eval calls
+        /// </summary>
         int _n_past;
         int _n_remain;
         int _n_consumed;
@@ -173,7 +177,8 @@ namespace LLama
             Name = name;
             _params = @params;
             _verbose = verbose;
-            _ctx = Utils.llama_init_from_gpt_params(ref _params);
+            ILLamaParams aparams = @params;
+            _ctx = Utils.llama_init_from_gpt_params(ref aparams);
 
             // Add a space in front of the first character to match OG llama tokenizer behavior
             _session_tokens = new List<llama_token>();
@@ -499,7 +504,7 @@ namespace LLama
         /// <param name="encoding"></param>
         /// <returns></returns>
         /// <exception cref="RuntimeError"></exception>
-        public IEnumerable<string> Call(string text, string encoding = "UTF-8")
+        public IEnumerable<string> Call(string text, string encoding = "UTF-8", bool add_to_history = true)
         {
             _is_antiprompt = false;
             if(_n_past > 0)

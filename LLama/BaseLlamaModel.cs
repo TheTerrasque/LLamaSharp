@@ -79,6 +79,24 @@ namespace LLama
             _token_history = tokens.ToList();
         }
 
+        public byte[] SaveState()
+        {
+            var stateSize = NativeApi.llama_get_state_size(_ctx);
+            byte[] stateMemory = new byte[stateSize];
+            NativeApi.llama_copy_state_data(_ctx, stateMemory);
+            return stateMemory;
+        }
+
+        public void LoadState(byte[] stateMemory)
+        {
+            int stateSize = (int)NativeApi.llama_get_state_size(_ctx);
+            if (stateMemory.Length != stateSize)
+            {
+                throw new RuntimeError("Failed to validate state size.");
+            }
+            NativeApi.llama_set_state_data(_ctx, stateMemory);
+        }
+
         Int32 _predict_next_token(ILlamaSamplingParams samplingParams) {
             var repeat_last_n = samplingParams.repeat_last_n < 0 ? ContextLength : samplingParams.repeat_last_n;
             var top_k = samplingParams.top_k <= 0 ? NativeApi.llama_n_vocab(_ctx) : samplingParams.top_k;

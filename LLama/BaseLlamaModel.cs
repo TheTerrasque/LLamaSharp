@@ -12,7 +12,7 @@ using SerilogTimings.Extensions;
 
 namespace LLama
 {
-    public class BaseLLamaModel : IDisposable
+    public class BaseLLamaModel : IDisposable, ILanguageModel
     {
         private ILogger _log;
         ILLamaParams _params;
@@ -21,7 +21,7 @@ namespace LLama
         /// <summary>
         /// Model Context length
         /// </summary>
-        int _n_ctx;
+        public int ContextLength { get;  internal set; }
         List<Int32> _token_history = new();
         
         public void Dispose()
@@ -35,10 +35,10 @@ namespace LLama
             _encoding = encoding;
             _log.Information("Initializing LLama model with params: {@modelParams}", _params);
             _ctx = Utils.llama_init_from_gpt_params(ref _params);
-            _n_ctx = NativeApi.llama_n_ctx(_ctx);
+            ContextLength = NativeApi.llama_n_ctx(_ctx);
         }
 
-        private void _process_tokens(List<Int32> tokens, CancellationToken ct)
+        private void _process_tokens(List<Int32> tokens, CancellationToken? ct)
         {
             var log = _log.ForContext("Function","_process_tokens");
 
@@ -58,7 +58,7 @@ namespace LLama
             log.Debug("Skipping {skipTokens} tokens out of {tokenCount}. TokenHistory length is {tokenHistoryCount}", 
                 skip_tokens, tokens.Count, _token_history.Count);
             
-            while (skip_tokens < tokens.Count && ct.IsCancellationRequested == false) {
+            while (skip_tokens < tokens.Count && (ct == null || ct.Value.IsCancellationRequested == false)) {
                 
                 log.Debug("Processing batch of max {n_batch} tokens. Tokens: {tokenCount}, skip_tokens: {skipTokens}", 
                     _params.n_batch, tokens.Count, skip_tokens);
@@ -80,7 +80,7 @@ namespace LLama
         }
 
         Int32 _predict_next_token(ILlamaSamplingParams samplingParams) {
-            var repeat_last_n = samplingParams.repeat_last_n < 0 ? _n_ctx : samplingParams.repeat_last_n;
+            var repeat_last_n = samplingParams.repeat_last_n < 0 ? ContextLength : samplingParams.repeat_last_n;
             var top_k = samplingParams.top_k <= 0 ? NativeApi.llama_n_vocab(_ctx) : samplingParams.top_k;
 
             Int32 id = 0;
@@ -103,7 +103,7 @@ namespace LLama
 
             // Apply penalties
             float nl_logit = logits[NativeApi.llama_token_nl()];
-            var last_n_repeat = Math.Min(Math.Min(_token_history.Count, repeat_last_n), _n_ctx);
+            var last_n_repeat = Math.Min(Math.Min(_token_history.Count, repeat_last_n), ContextLength);
 
             var sampling_window = _token_history.Skip(_token_history.Count - last_n_repeat).ToArray();
 
@@ -155,26 +155,23 @@ namespace LLama
             return id;
         }
 
-        public IEnumerable<string> Generate(string text, CancellationToken ct, ILlamaSamplingParams? samplingParams = null) {
+        public IEnumerable<string> Generate(string text, CancellationToken? ct, ILlamaSamplingParams? samplingParams = null) {
             var tokens = Utils.llama_tokenize(_ctx, text, true, _encoding);
 
             if (samplingParams == null) samplingParams = new LLamaSamplingParams();
 
             _log.Information("Generating text with params: {@samplingParams}", samplingParams);
-            
-            while (ct.IsCancellationRequested == false)
+
+            while (ct == null || ct.Value.IsCancellationRequested == false)
             {
                 _process_tokens(tokens, ct);
                 var next_token = _predict_next_token(samplingParams);
-                if (next_token == NativeApi.llama_token_eos())
-                {
-                    break;
-                }         
-                tokens.Add(next_token);
-                var res = Utils.PtrToStringUTF8(NativeApi.llama_token_to_str(_ctx, next_token));
-                yield return res;
-            }
+                if (next_token == NativeApi.llama_token_eos()) break;
 
+                tokens.Add(next_token);
+                var next_token_text = Utils.PtrToStringUTF8(NativeApi.llama_token_to_str(_ctx, next_token));
+                yield return next_token_text;
+            }
         }
     }
 }

@@ -8,11 +8,11 @@ namespace LLama.WebAPI.Controllers
     [Route("v1/chat")]
     public class OpenAiChatApiController : ControllerBase
     {
-        private readonly ChatService _service;
+        private readonly BaseChatService _service;
         private readonly ILogger<ChatController> _logger;
 
         public OpenAiChatApiController(ILogger<ChatController> logger,
-            ChatService service)
+            BaseChatService service)
         {
             _logger = logger;
             _service = service;
@@ -21,7 +21,7 @@ namespace LLama.WebAPI.Controllers
         [HttpPost("completions")]
         public ChatCompleteResponse SendMessage([FromBody] ChatCompleteRequest input)
         {
-            var data = _service.Send(input.Messages.Last().Content);
+            var data = _service.ProcessRequest(input.Messages);
             return new ChatCompleteResponse
             {
                 Choices = new List<Choice> {
@@ -36,13 +36,13 @@ namespace LLama.WebAPI.Controllers
                 },
                 Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
                 Id = Guid.NewGuid().ToString(),
-                Model = _service.ModelName,
+                Model = "MysteryModel",
                 Object = "text_completion",
                 Usage = new Usage
                 {
-                    CompletionTokens = 1,
-                    PromptTokens = 1,
-                    TotalTokens = 1
+                    CompletionTokens = -1,
+                    PromptTokens = -1,
+                    TotalTokens = -1
                 }                
             };
         }

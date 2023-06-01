@@ -8,6 +8,9 @@ Log.Logger = new LoggerConfiguration()
 try
 {
     var builder = WebApplication.CreateBuilder(args);
+    Log.Logger = new LoggerConfiguration()
+        .ReadFrom.Configuration(builder.Configuration)
+        .CreateLogger();
     builder.Host.UseSerilog();
     // Add services to the container.
 
@@ -25,7 +28,11 @@ try
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen();
 
+    builder.Services.Configure<BaseChatServiceOptions>(
+    builder.Configuration.GetSection(BaseChatServiceOptions.ChatServiceOptionsSection));
+
     builder.Services.AddSingleton<ChatService>();
+    builder.Services.AddSingleton<BaseChatService>();
 
     var app = builder.Build();
 

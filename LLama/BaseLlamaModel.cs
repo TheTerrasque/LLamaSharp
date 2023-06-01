@@ -30,12 +30,56 @@ namespace LLama
         }
 
         public BaseLLamaModel(ILLamaParams Params, string encoding = "UTF-8") {
-            _log = Log.ForContext<BaseLLamaModel>().ForContext("ModelParams", Params);
+            _log = Log.ForContext<BaseLLamaModel>();
             _params = Params;
             _encoding = encoding;
             _log.Information("Initializing LLama model with params: {@modelParams}", _params);
             _ctx = Utils.llama_init_from_gpt_params(ref _params);
             ContextLength = NativeApi.llama_n_ctx(_ctx);
+        }
+
+        public IEnumerable<string> Generate(string text, CancellationToken? ct, ILlamaSamplingParams? samplingParams = null) {
+            var log = _log.ForContext("Function","Generate");
+            log.Debug("Generating response for text: {text}", text);
+            var tokens = Utils.llama_tokenize(_ctx, text, true, _encoding);
+
+            if (samplingParams == null) samplingParams = new LLamaSamplingParams();
+
+            log.Information("Generating text with params: {@samplingParams}", samplingParams);
+
+            while (ct == null || ct.Value.IsCancellationRequested == false)
+            {
+                _process_tokens(tokens, ct);
+                var next_token = _predict_next_token(samplingParams);
+                if (next_token == NativeApi.llama_token_eos())
+                {
+                    log.Debug("Generated token: EOS");
+                    break;
+                }
+
+                tokens.Add(next_token);
+                var next_token_text = Utils.PtrToStringUTF8(NativeApi.llama_token_to_str(_ctx, next_token));
+                log.Debug("Generated token: {nextTokenText}", next_token_text);
+                yield return next_token_text;
+            }
+        }
+
+        public byte[] SaveState()
+        {
+            var stateSize = NativeApi.llama_get_state_size(_ctx);
+            byte[] stateMemory = new byte[stateSize];
+            NativeApi.llama_copy_state_data(_ctx, stateMemory);
+            return stateMemory;
+        }
+
+        public void LoadState(byte[] stateMemory)
+        {
+            int stateSize = (int)NativeApi.llama_get_state_size(_ctx);
+            if (stateMemory.Length != stateSize)
+            {
+                throw new RuntimeError("Failed to validate state size.");
+            }
+            NativeApi.llama_set_state_data(_ctx, stateMemory);
         }
 
         private void _process_tokens(List<Int32> tokens, CancellationToken? ct)
@@ -77,24 +121,6 @@ namespace LLama
                 }
             }
             _token_history = tokens.ToList();
-        }
-
-        public byte[] SaveState()
-        {
-            var stateSize = NativeApi.llama_get_state_size(_ctx);
-            byte[] stateMemory = new byte[stateSize];
-            NativeApi.llama_copy_state_data(_ctx, stateMemory);
-            return stateMemory;
-        }
-
-        public void LoadState(byte[] stateMemory)
-        {
-            int stateSize = (int)NativeApi.llama_get_state_size(_ctx);
-            if (stateMemory.Length != stateSize)
-            {
-                throw new RuntimeError("Failed to validate state size.");
-            }
-            NativeApi.llama_set_state_data(_ctx, stateMemory);
         }
 
         Int32 _predict_next_token(ILlamaSamplingParams samplingParams) {
@@ -171,25 +197,6 @@ namespace LLama
                 }
             }
             return id;
-        }
-
-        public IEnumerable<string> Generate(string text, CancellationToken? ct, ILlamaSamplingParams? samplingParams = null) {
-            var tokens = Utils.llama_tokenize(_ctx, text, true, _encoding);
-
-            if (samplingParams == null) samplingParams = new LLamaSamplingParams();
-
-            _log.Information("Generating text with params: {@samplingParams}", samplingParams);
-
-            while (ct == null || ct.Value.IsCancellationRequested == false)
-            {
-                _process_tokens(tokens, ct);
-                var next_token = _predict_next_token(samplingParams);
-                if (next_token == NativeApi.llama_token_eos()) break;
-
-                tokens.Add(next_token);
-                var next_token_text = Utils.PtrToStringUTF8(NativeApi.llama_token_to_str(_ctx, next_token));
-                yield return next_token_text;
-            }
         }
     }
 }

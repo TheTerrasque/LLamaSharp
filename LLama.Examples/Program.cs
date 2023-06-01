@@ -98,7 +98,7 @@ while (true)
     }
     else if (choice == 6) {
         var modelPath = GetModelPath();
-        var llamaparams = new LLamaParams(model: modelPath);
+        var llamaparams = new LLamaParams(model: modelPath, n_ctx:2048);
         var model = new BaseLLamaModel(llamaparams);
         var chat = new BaseChatSession(model, 
             new ChatMetadata()

@@ -9,6 +9,7 @@ try
 {
     var builder = WebApplication.CreateBuilder(args);
     Log.Logger = new LoggerConfiguration()
+        .Enrich.FromLogContext()
         .ReadFrom.Configuration(builder.Configuration)
         .CreateLogger();
     builder.Host.UseSerilog();

@@ -55,5 +55,10 @@ namespace LLama.Interfaces
         /// batch size for prompt processing (must be >=32 to use BLAS)
         /// </summary>
         public int n_batch { get; set; }
+
+        /// <summary>
+        /// Treat EOS token as a newline instead of end of text
+        /// </summary>
+        public bool eos_to_newline { get; set; }
     }
 }

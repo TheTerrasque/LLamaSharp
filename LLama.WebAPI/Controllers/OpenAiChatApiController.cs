@@ -30,7 +30,7 @@ namespace LLama.WebAPI.Controllers
                         Index = 0,
                         Message = new Message {
                             Content = data,
-                            Role = "agent"
+                            Role = "assistant"
                         }
                     }
                 },

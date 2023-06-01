@@ -4,4 +4,3 @@ User: Hello, Assistant.
 Assistant: Hello. How may I help you today?
 User: Please tell me the largest city in Europe.
 Assistant: Sure. The largest city in Europe is Moscow, the capital of Russia.
-User:

@@ -36,6 +36,7 @@ namespace LLama
         public string input_prefix = ""; // string to prefix user inputs with
         public string input_suffix = ""; // string to suffix user inputs with
         public List<string> antiprompt; // string upon seeing which more user input is prompted
+        public bool eos_to_newline { get; set; } = false; // treat EOS token as a newline instead of end of text
 
         public string lora_adapter { get; set; } = ""; // lora adapter path
         public string lora_base { get; set; } = ""; // base model path for the lora adapter
@@ -72,7 +73,7 @@ namespace LLama
             bool prompt_cache_all = false, bool embedding = false, bool interactive_first = false, 
             bool instruct = false, bool penalize_nl = true,
             bool perplexity = false, bool use_mmap = true, bool use_mlock = false, bool mem_test = false,
-            bool verbose_prompt = false)
+            bool verbose_prompt = false, bool eos_to_newline = false)
         {
             this.seed = seed;
             if (n_threads != -1)
@@ -84,6 +85,8 @@ namespace LLama
             this.n_batch = n_batch;
             this.n_keep = n_keep;
             this.n_gpu_layers = n_gpu_layers == -1 ? 20 : n_gpu_layers;
+
+            this.eos_to_newline = eos_to_newline;
 
             if (logit_bias == null)
             {

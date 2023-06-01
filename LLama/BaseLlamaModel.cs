@@ -9,6 +9,7 @@ using System.Threading;
 using LLama.Models;
 using Serilog;
 using SerilogTimings.Extensions;
+using Serilog.Context;
 
 namespace LLama
 {
@@ -21,15 +22,16 @@ namespace LLama
         /// <summary>
         /// Model Context length
         /// </summary>
-        public int ContextLength { get;  internal set; }
+        public int ContextLength { get; internal set; }
         List<Int32> _token_history = new();
-        
+
         public void Dispose()
         {
             _ctx.Dispose();
         }
 
-        public BaseLLamaModel(ILLamaParams Params, string encoding = "UTF-8") {
+        public BaseLLamaModel(ILLamaParams Params, string encoding = "UTF-8")
+        {
             _log = Log.ForContext<BaseLLamaModel>();
             _params = Params;
             _encoding = encoding;
@@ -38,29 +40,41 @@ namespace LLama
             ContextLength = NativeApi.llama_n_ctx(_ctx);
         }
 
-        public IEnumerable<string> Generate(string text, CancellationToken? ct, ILlamaSamplingParams? samplingParams = null) {
-            var log = _log.ForContext("Function","Generate");
-            log.Debug("Generating response for text: {text}", text);
-            var tokens = Utils.llama_tokenize(_ctx, text, true, _encoding);
-
-            if (samplingParams == null) samplingParams = new LLamaSamplingParams();
-
-            log.Information("Generating text with params: {@samplingParams}", samplingParams);
-
-            while (ct == null || ct.Value.IsCancellationRequested == false)
+        public IEnumerable<string> Generate(string text, CancellationToken? ct, ILlamaSamplingParams? samplingParams = null)
+        {
+            using (LogContext.PushProperty("LlamaGenerateId", Guid.NewGuid()))
             {
-                _process_tokens(tokens, ct);
-                var next_token = _predict_next_token(samplingParams);
-                if (next_token == NativeApi.llama_token_eos())
-                {
-                    log.Debug("Generated token: EOS");
-                    break;
-                }
+                var log = _log.ForContext("Function", "Generate");
+                log.Debug("Generating response for text: {text}", text);
+                var tokens = Utils.llama_tokenize(_ctx, text, true, _encoding);
 
-                tokens.Add(next_token);
-                var next_token_text = Utils.PtrToStringUTF8(NativeApi.llama_token_to_str(_ctx, next_token));
-                log.Debug("Generated token: {nextTokenText}", next_token_text);
-                yield return next_token_text;
+                if (samplingParams == null) samplingParams = new LLamaSamplingParams();
+
+                log.Information("Generating text with params: {@samplingParams}", samplingParams);
+
+                while (ct == null || ct.Value.IsCancellationRequested == false)
+                {
+                    _process_tokens(tokens, ct);
+                    var next_token = _predict_next_token(samplingParams);
+                    if (next_token == NativeApi.llama_token_eos())
+                    {
+                        if (_params.eos_to_newline)
+                        {
+                            log.Debug("Translated EOS token to newline");
+                            next_token = NativeApi.llama_token_nl();
+                        }
+                        else
+                        {
+                            log.Debug("Generated token: EOS");
+                            break;
+                        }
+                    }
+
+                    tokens.Add(next_token);
+                    var next_token_text = Utils.PtrToStringUTF8(NativeApi.llama_token_to_str(_ctx, next_token));
+                    log.Debug("Generated token: {nextTokenText} - Token ID {tokenId}", next_token_text, next_token);
+                    yield return next_token_text;
+                }
             }
         }
 
@@ -84,7 +98,7 @@ namespace LLama
 
         private void _process_tokens(List<Int32> tokens, CancellationToken? ct)
         {
-            var log = _log.ForContext("Function","_process_tokens");
+            var log = _log.ForContext("Function", "_process_tokens");
 
             // Find out which tokens are the same as in the previous call
             var skip_tokens = 0;
@@ -99,16 +113,17 @@ namespace LLama
                     skip_tokens++;
                 }
             }
-            log.Debug("Skipping {skipTokens} tokens out of {tokenCount}. TokenHistory length is {tokenHistoryCount}", 
+            log.Debug("Skipping {skipTokens} tokens out of {tokenCount}. TokenHistory length is {tokenHistoryCount}",
                 skip_tokens, tokens.Count, _token_history.Count);
-            
-            while (skip_tokens < tokens.Count && (ct == null || ct.Value.IsCancellationRequested == false)) {
-                
-                log.Debug("Processing batch of max {n_batch} tokens. Tokens: {tokenCount}, skip_tokens: {skipTokens}", 
+
+            while (skip_tokens < tokens.Count && (ct == null || ct.Value.IsCancellationRequested == false))
+            {
+
+                log.Debug("Processing batch of max {n_batch} tokens. Tokens: {tokenCount}, skip_tokens: {skipTokens}",
                     _params.n_batch, tokens.Count, skip_tokens);
 
                 var tokens_to_process = tokens.Skip(skip_tokens).Take(_params.n_batch).ToArray();
-                
+
                 using (log.OperationAt(Serilog.Events.LogEventLevel.Debug).Time("Process {tokens} tokens", tokens_to_process.Length))
                 {
                     var eval_result = NativeApi.llama_eval(_ctx, tokens_to_process, tokens_to_process.Length, skip_tokens, _params.n_threads);
@@ -123,7 +138,8 @@ namespace LLama
             _token_history = tokens.ToList();
         }
 
-        Int32 _predict_next_token(ILlamaSamplingParams samplingParams) {
+        Int32 _predict_next_token(ILlamaSamplingParams samplingParams)
+        {
             var repeat_last_n = samplingParams.repeat_last_n < 0 ? ContextLength : samplingParams.repeat_last_n;
             var top_k = samplingParams.top_k <= 0 ? NativeApi.llama_n_vocab(_ctx) : samplingParams.top_k;
 
@@ -156,7 +172,7 @@ namespace LLama
 
             SamplingApi.llama_sample_frequency_and_presence_penalties(_ctx, candidates_p,
                 sampling_window, (ulong)last_n_repeat, samplingParams.frequency_penalty, samplingParams.presence_penalty);
-            
+
             if (!samplingParams.penalize_nl)
             {
                 logits[NativeApi.llama_token_nl()] = nl_logit;
@@ -174,15 +190,15 @@ namespace LLama
                     float mirostat_mu = 2.0f * samplingParams.mirostat_tau;
                     const int mirostat_m = 100;
                     SamplingApi.llama_sample_temperature(_ctx, candidates_p, samplingParams.temp);
-                    id = SamplingApi.llama_sample_token_mirostat(_ctx, candidates_p, 
-                        samplingParams.mirostat_tau, samplingParams.mirostat_eta, 
+                    id = SamplingApi.llama_sample_token_mirostat(_ctx, candidates_p,
+                        samplingParams.mirostat_tau, samplingParams.mirostat_eta,
                         mirostat_m, ref mirostat_mu);
                 }
                 else if (samplingParams.mirostat == 2)
                 {
                     float mirostat_mu = 2.0f * samplingParams.mirostat_tau;
                     SamplingApi.llama_sample_temperature(_ctx, candidates_p, samplingParams.temp);
-                    id = SamplingApi.llama_sample_token_mirostat_v2(_ctx, candidates_p, 
+                    id = SamplingApi.llama_sample_token_mirostat_v2(_ctx, candidates_p,
                         samplingParams.mirostat_tau, samplingParams.mirostat_eta, ref mirostat_mu);
                 }
                 else

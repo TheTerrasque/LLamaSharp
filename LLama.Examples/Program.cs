@@ -100,13 +100,19 @@ while (true)
         var modelPath = GetModelPath();
         var llamaparams = new LLamaParams(model: modelPath);
         var model = new BaseLLamaModel(llamaparams);
+        var chat = new BaseChatSession(model, 
+            new ChatMetadata()
+                .WithPromptFromFile("Assets/chat-with-bob.txt")
+                .SetAssistantName("Bob"));
+
         Console.WriteLine("Here's a simple example for using BaseLLamaModel. You can input some words and let AI " +
             "complete it for you. For example: Write a story about a fox that wants to make friend with human. No less than 200 words.");
+        
         while (true)
         {
             Console.Write("Your input: ");
             var input = Console.ReadLine();
-            foreach (var item in model.Generate(input, new CancellationToken()))
+            foreach (var item in chat.Chat(input))
             {
                 Console.Write(item);
             }

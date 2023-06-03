@@ -1,6 +1,7 @@
 using System.Text;
 using LLama.Interfaces;
 using LLama.Extensions;
+using LLama.Models;
 using Microsoft.Extensions.Options;
 using Serilog;
 
@@ -10,13 +11,14 @@ public class BaseChatServiceOptions {
     public const string ChatServiceOptionsSection = "ChatService";
     public string Model { get; set; } = @"C:\temp\models\Manticore-13B-Chat-Pyg.ggmlv3.q5_1.bin";
     public int NCtx { get; set; } = 2048;
-    public int Seed { get; set; } = 53453721;
+    public int Seed { get; set; } = -1;
     public int NGPULayers { get; set; } = 17;
     public string Encoding { get; set; } = "UTF-8";
     public string Prompt { get; set; } = "";
     public string PromptFile { get; set; } = "";
-    public string[] BreakOn { get; set; } = new string[] { "User:", "user:" };
+    public string[] BreakOn { get; set; } = new string[] { "user:"};
     public bool TreatEOSAsNewline { get; set; } = true;
+    public LLamaSamplingParams SamplingParams { get; set; } = new LLamaSamplingParams();
 }
 
 public class BaseChatService
@@ -27,6 +29,14 @@ public class BaseChatService
 
     public BaseChatService(IOptions<BaseChatServiceOptions> options)
     {
+        if (options.Value.Model == null || options.Value.Model == "")
+        {
+            throw new ArgumentNullException(nameof(options.Value.Model));
+        }
+        if (options.Value.Seed < 0)
+        {
+            options.Value.Seed = new Random().Next();
+        }
         _log.Debug("Creating BaseChatService with options {@options}", options.Value);
         _options = options.Value;
         _model = new BaseLLamaModel(new
@@ -64,31 +74,45 @@ public class BaseChatService
         return sb.ToString();
     }
 
-    public string ProcessRequest(List<Message> messages)
+    private string _removeEnding(string text) {
+        foreach (var ending in _options.BreakOn)
+        {
+            if (text.Trim().ToLower().EndsWith("\n" + ending.ToLower()))
+            {
+                text = text.Remove(text.Length - ending.Length).Trim();
+                break;
+            }
+        }
+        return text;
+    }
+
+    public string ProcessRequest(List<Message> messages, CancellationToken? ct = null)
     {
         var text = "";
         foreach (var token in ProcessRequestStreamResponse(messages))
         {
+            if (ct != null && ct.Value.IsCancellationRequested) break;
             text += token;
         }
-        text = text.Remove(text.Length - 5).Trim();
-        return text;
+        return _removeEnding(text);
     }
 
-    public IEnumerable<string> ProcessRequestStreamResponse(List<Message> messages)
+    public IEnumerable<string> ProcessRequestStreamResponse(List<Message> messages, CancellationToken? ct = null)
     {
         CancellationTokenSource source = new CancellationTokenSource();
-        CancellationToken ct = source.Token;
+        CancellationToken cti = source.Token;
         var text = "";
-        foreach (var entry in _model.Generate(_formatMessages(messages), ct))
+        foreach (var entry in _model.Generate(_formatMessages(messages), cti, _options.SamplingParams))
         {
-            if (_options.BreakOn.Any(x => text.Trim().EndsWith(x)))
+            if (ct != null && ct.Value.IsCancellationRequested) break;
+            if (_options.BreakOn.Any(x => text.Trim().ToLower().EndsWith(x)))
             {
               source.Cancel();
               break;
             }
             text += entry;
             yield return entry;
+            
         };
     }    
 }

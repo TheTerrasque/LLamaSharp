@@ -32,30 +32,40 @@ namespace LLama
 
         public BaseLLamaModel(ILLamaParams Params, string encoding = "UTF-8")
         {
-            _log = Log.ForContext<BaseLLamaModel>();
             _params = Params;
             _encoding = encoding;
-            _log.Information("Initializing LLama model with params: {@modelParams}", _params);
+            Log.ForContext<BaseLLamaModel>()
+                .Information("Initializing LLama model with params: {@modelParams}", _params);
             _ctx = Utils.llama_init_from_gpt_params(ref _params);
             ContextLength = NativeApi.llama_n_ctx(_ctx);
+            _log = Log.ForContext<BaseLLamaModel>()
+                .ForContext("ModelFile", Params.model);
         }
 
         public IEnumerable<string> Generate(string text, CancellationToken? ct, ILlamaSamplingParams? samplingParams = null)
         {
             using (LogContext.PushProperty("LlamaGenerateId", Guid.NewGuid()))
             {
-                var log = _log.ForContext("Function", "Generate");
-                log.Debug("Generating response for text: {text}", text);
-                var tokens = Utils.llama_tokenize(_ctx, text, true, _encoding);
-
                 if (samplingParams == null) samplingParams = new LLamaSamplingParams();
+                var log = _log.ForContext("Function", "Generate");
 
-                log.Information("Generating text with params: {@samplingParams}", samplingParams);
+                var tokens = Utils.llama_tokenize(_ctx, text, true, _encoding);
+                if (_token_history.Count > tokens.Count)
+                    _token_history.RemoveRange(tokens.Count, _token_history.Count - tokens.Count);
+
+                log.Debug("Generating text with params: {@samplingParams} and text: {promptText}", samplingParams, text);
 
                 while (ct == null || ct.Value.IsCancellationRequested == false)
                 {
+                    if (_token_history.Count >= _params.n_ctx) {
+                        log.Warning("Token history length {tokenHistoryCount} is greater than or equal to max context length {contextLength}. Exiting generation loop.",
+                            _token_history.Count, _params.n_ctx);
+                        break;
+                    }
+
                     _process_tokens(tokens, ct);
                     var next_token = _predict_next_token(samplingParams);
+
                     if (next_token == NativeApi.llama_token_eos())
                     {
                         if (_params.eos_to_newline)
@@ -76,6 +86,10 @@ namespace LLama
                     yield return next_token_text;
                 }
             }
+        }
+
+        public int CountTokens(string text){
+            return Utils.llama_tokenize(_ctx, text, true, _encoding).Count;
         }
 
         public byte[] SaveState()

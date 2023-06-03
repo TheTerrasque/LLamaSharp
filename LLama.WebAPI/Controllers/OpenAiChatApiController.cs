@@ -21,7 +21,8 @@ namespace LLama.WebAPI.Controllers
         [HttpPost("completions")]
         public ChatCompleteResponse SendMessage([FromBody] ChatCompleteRequest input)
         {
-            var data = _service.ProcessRequest(input.Messages);
+            var cancellation = Request.HttpContext.RequestAborted;
+            var data = _service.ProcessRequest(input.Messages, cancellation);
             return new ChatCompleteResponse
             {
                 Choices = new List<Choice> {

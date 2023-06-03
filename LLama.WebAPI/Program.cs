@@ -35,25 +35,24 @@ try
     builder.Services.AddSingleton<ChatService>();
     builder.Services.AddSingleton<BaseChatService>();
 
+
     var app = builder.Build();
+;
 
     // Configure the HTTP request pipeline.
+    app.UseDefaultFiles();
+    app.UseStaticFiles();
+
     if (app.Environment.IsDevelopment())
     {
         app.UseSwagger();
         app.UseSwaggerUI();
-        app.MapGet("/", async context =>
-        {
-            context.Response.Redirect("/swagger");
-        });
     }
 
     app.UseCors("AllowAll");
     app.UseAuthorization();
 
     app.MapControllers();
-
-
 
     app.Run();
 }

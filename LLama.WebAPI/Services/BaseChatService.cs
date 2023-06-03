@@ -12,7 +12,7 @@ public class BaseChatServiceOptions {
     public string Model { get; set; } = @"C:\temp\models\Manticore-13B-Chat-Pyg.ggmlv3.q5_1.bin";
     public int NCtx { get; set; } = 2048;
     public int Seed { get; set; } = -1;
-    public int NGPULayers { get; set; } = 17;
+    public int NGPULayers { get; set; } = 0;
     public string Encoding { get; set; } = "UTF-8";
     public string Prompt { get; set; } = "";
     public string PromptFile { get; set; } = "";

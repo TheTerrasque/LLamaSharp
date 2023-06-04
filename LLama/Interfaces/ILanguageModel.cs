@@ -8,5 +8,6 @@ namespace LLama.Interfaces
         public IEnumerable<string> Generate(string text, CancellationToken? ct=null, ILlamaSamplingParams? samplingParams = null);
         public byte[] SaveState();
         public void LoadState(byte[] state);
+        public int CountTokens(string text);
     }
 }

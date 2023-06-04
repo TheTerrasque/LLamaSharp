@@ -1,0 +1,1 @@
+Drop models here. With default config it tries to load "model.bin" from this folder.

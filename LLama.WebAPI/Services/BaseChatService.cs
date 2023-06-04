@@ -9,7 +9,7 @@ namespace LLama.WebAPI.Services;
 
 public class BaseChatServiceOptions {
     public const string ChatServiceOptionsSection = "ChatService";
-    public string Model { get; set; } = @"C:\temp\models\Manticore-13B-Chat-Pyg.ggmlv3.q5_1.bin";
+    public string Model { get; set; } = @"Asets\Models\model.bin";
     public int NCtx { get; set; } = 2048;
     public int Seed { get; set; } = -1;
     public int NGPULayers { get; set; } = 0;
@@ -104,7 +104,11 @@ public class BaseChatService
         var text = "";
         foreach (var entry in _model.Generate(_formatMessages(messages), cti, _options.SamplingParams))
         {
-            if (ct != null && ct.Value.IsCancellationRequested) break;
+            if (ct != null && ct.Value.IsCancellationRequested)
+            {
+                source.Cancel();
+                break;
+            }
             if (_options.BreakOn.Any(x => text.Trim().ToLower().EndsWith(x)))
             {
               source.Cancel();
@@ -112,7 +116,6 @@ public class BaseChatService
             }
             text += entry;
             yield return entry;
-            
         };
     }    
 }

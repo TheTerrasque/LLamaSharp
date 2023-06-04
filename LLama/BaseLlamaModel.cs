@@ -51,7 +51,7 @@ namespace LLama
 
                 var tokens = Utils.llama_tokenize(_ctx, text, true, _encoding);
                 if (_token_history.Count > tokens.Count)
-                    _token_history.RemoveRange(tokens.Count, _token_history.Count - tokens.Count);
+                    _token_history.Clear();
 
                 log.Debug("Generating text with params: {@samplingParams} and text: {promptText}", samplingParams, text);
 
@@ -86,6 +86,11 @@ namespace LLama
                     yield return next_token_text;
                 }
             }
+        }
+
+        public void SetSeed(int seed)
+        {
+            //NativeApi. (_ctx, seed);
         }
 
         public int CountTokens(string text){

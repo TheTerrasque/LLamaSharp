@@ -13,10 +13,14 @@ namespace LLama.Native
         /// text context
         /// </summary>
         public int n_ctx;
+        public int n_batch;
         /// <summary>
         /// number of layers to store in VRAM
         /// </summary>
         public int n_gpu_layers;
+        public int main_gpu;
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 1)]
+        public float[] tensor_split;
         /// <summary>
         /// RNG seed, -1 for random
         /// </summary>

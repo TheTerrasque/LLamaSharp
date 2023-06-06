@@ -4,6 +4,7 @@ using LLama.Extensions;
 using LLama.Models;
 using Microsoft.Extensions.Options;
 using Serilog;
+using HandlebarsDotNet;
 
 namespace LLama.WebAPI.Services;
 
@@ -16,15 +17,46 @@ public class BaseChatServiceOptions {
     public string Encoding { get; set; } = "UTF-8";
     public string Prompt { get; set; } = "";
     public string PromptFile { get; set; } = "";
+
+    /// <summary>
+    /// Handlebars template for system messages
+    /// </summary>
+    public string SystemFormat { get; set; } = "{{#capitalize user}}: {{message}}\n";
+    /// <summary>
+    /// Handlebars template for user messages
+    /// </summary>
+    public string UserFormat { get; set; } = "{{#capitalize user}}: {{message}}\n";
+
+    /// <summary>
+    /// Handlebars template for assistant messages
+    /// </summary>
+    public string AssistantFormat { get; set; } = "{{#capitalize user}}: {{#if message}}{{message}}\n{{/if}}";
+
     public string[] BreakOn { get; set; } = new string[] { "user:"};
     public bool TreatEOSAsNewline { get; set; } = true;
     public LLamaSamplingParams SamplingParams { get; set; } = new LLamaSamplingParams();
+}
+
+public class TemplateInput
+{
+    private HandlebarsTemplate<object, object> _template;
+
+    public TemplateInput(string template)
+    {
+        _template = Handlebars.Compile(template);
+    }
+
+    public string Render(string user, string message)
+    {
+        return _template(new{user, message});
+    }
 }
 
 public class BaseChatService
 {
     private readonly BaseChatServiceOptions _options;
     private readonly ILanguageModel _model;
+    private readonly Dictionary<string, TemplateInput> _templates;
     Serilog.ILogger _log = Log.ForContext<BaseChatService>();
 
     public BaseChatService(IOptions<BaseChatServiceOptions> options)
@@ -47,6 +79,22 @@ public class BaseChatService
                 eos_to_newline: _options.TreatEOSAsNewline,
                 n_gpu_layers: _options.NGPULayers), 
             _options.Encoding);
+
+        Handlebars.RegisterHelper("capitalize", (writer, context, parameters) => 
+        {
+            if (parameters.Length != 1)
+            {
+                throw new HandlebarsException("{{capitalize}} helper must have exactly one parameter");
+            }
+            writer.WriteSafeString(parameters[0].ToString().Capitalize());
+        });
+
+        _templates = new Dictionary<string, TemplateInput>() {
+            {"system", new TemplateInput(_options.SystemFormat)},
+            {"user", new TemplateInput(_options.UserFormat)},
+            {"assistant", new TemplateInput(_options.AssistantFormat)}
+        };
+        
     }
 
     string _formatMessages(List<Message> messages)
@@ -62,13 +110,12 @@ public class BaseChatService
         }
         foreach (var message in messages)
         {
-            if (message.Role != null && message.Role != "" && message.Role != "system")
+            if (!_templates.ContainsKey(message.Role))
             {
-                sb.Append(message.Role.Capitalize());
-                sb.Append(": ");
+                log.Warning("Unknown role {role}", message.Role);
+                continue;
             }
-            sb.Append(message.Content);
-            sb.Append("\n");
+            sb.Append(_templates[message.Role].Render(message.Role, message.Content));
         }
         sb.Append("Assistant: ");
         return sb.ToString();

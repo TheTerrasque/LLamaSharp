@@ -1,8 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.IO;
 using System.Runtime.InteropServices;
-using System.Text;
 using LLama.Exceptions;
 
 namespace LLama.Native
@@ -26,9 +23,9 @@ namespace LLama.Native
             }
             NativeApi.llama_init_backend();
         }
-        private const string libraryName = "libllama";
+        private const string libraryName = "llama";
 
-        [DllImport("libllama", EntryPoint = "llama_mmap_supported")]
+        [DllImport("llama", EntryPoint = "llama_mmap_supported")]
         public static extern bool llama_empty_call();
 
         [DllImport(libraryName)]
@@ -198,6 +195,11 @@ namespace LLama.Native
         [DllImport(libraryName, EntryPoint = "llama_tokenize")]
         public static extern int llama_tokenize_native(SafeLLamaContextHandle ctx, sbyte[] text, llama_token[] tokens, int n_max_tokens, bool add_bos);
 
+        /// <summary>
+        /// Get the number of tokens in the vocabulary
+        /// </summary>
+        /// <param name="ctx"></param>
+        /// <returns></returns>
         [DllImport(libraryName)]
         public static extern int llama_n_vocab(SafeLLamaContextHandle ctx);
 
@@ -243,6 +245,11 @@ namespace LLama.Native
         [DllImport(libraryName)]
         public static extern llama_token llama_token_eos();
 
+
+        /// <summary>
+        /// Newline token
+        /// </summary>
+        /// <returns></returns>
         [DllImport(libraryName)]
         public static extern llama_token llama_token_nl();
 

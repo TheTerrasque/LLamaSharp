@@ -2,6 +2,7 @@
 using LLama.Types;
 using LLama.Extensions;
 using LLama.Native;
+using LLama.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -33,6 +34,9 @@ namespace LLama
         // if we loaded a session with at least 75% similarity. It's currently just used to speed up the
         // initial prompt so it doesn't need to be an exact match.
         bool _need_to_save_session;
+        /// <summary>
+        /// The number of tokens to use from previous llama eval calls
+        /// </summary>
         int _n_past;
         int _n_remain;
         int _n_consumed;
@@ -174,7 +178,8 @@ namespace LLama
             Name = name;
             _params = @params;
             _verbose = verbose;
-            _ctx = Utils.llama_init_from_gpt_params(ref _params);
+            ILLamaParams aparams = @params;
+            _ctx = Utils.llama_init_from_gpt_params(ref aparams);
 
             // Add a space in front of the first character to match OG llama tokenizer behavior
             _session_tokens = new List<llama_token>();
@@ -210,14 +215,14 @@ namespace LLama
             WithPrompt(_params.prompt);
 
             // prefix & suffix for instruct mode
-            _inp_pfx = Utils.llama_tokenize(_ctx, "\n\n### Instruction:\n\n", true, encoding);
-            _inp_sfx = Utils.llama_tokenize(_ctx, "\n\n### Response:\n\n", false, encoding);
+            _inp_pfx = Utils.llama_tokenize(_ctx, _params.instruct_prefix, true, encoding);
+            _inp_sfx = Utils.llama_tokenize(_ctx, _params.instruct_suffix, false, encoding);
 
             // in instruct mode, we inject a prefix and a suffix to each input by the user
             if (_params.instruct)
             {
                 _params.interactive_first = true;
-                _params.antiprompt.Add("### Instruction:\n\n");
+                _params.antiprompt.Add(_params.instruct_prefix.Trim());
             }
 
             // enable interactive mode if reverse prompt or interactive start is specified
@@ -500,7 +505,7 @@ namespace LLama
         /// <param name="encoding"></param>
         /// <returns></returns>
         /// <exception cref="RuntimeError"></exception>
-        public IEnumerable<string> Call(string text, string encoding = "UTF-8")
+        public IEnumerable<string> Call(string text, string encoding = "UTF-8", bool add_to_history = true)
         {
             _is_antiprompt = false;
             if(_n_past > 0)

@@ -339,3 +339,4 @@ test/TensorFlowNET.Examples/mnist
 /redist
 *.xml
 *.xsd
+appsettings.Development.json

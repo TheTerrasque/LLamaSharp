@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using LLama.Exceptions;
+using LLama.Interfaces;
 
 namespace LLama
 {
@@ -22,7 +23,8 @@ namespace LLama
         public LLamaEmbedder(LLamaParams @params)
         {
             @params.embedding = true;
-            _ctx = Utils.llama_init_from_gpt_params(ref @params);
+            ILLamaParams params1 = @params;
+            _ctx = Utils.llama_init_from_gpt_params(ref params1);
         }
 
         public unsafe float[] GetEmbeddings(string text, int n_thread = -1, bool add_bos = true, string encoding = "UTF-8")

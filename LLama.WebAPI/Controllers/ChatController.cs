@@ -22,7 +22,7 @@ namespace LLama.WebAPI.Controllers
         [HttpPost("Send")]
         public string SendMessage([FromBody] SendMessageInput input)
         {
-            return _service.Send(input);
+            return _service.Send(input.Text);
         }
     }
 }

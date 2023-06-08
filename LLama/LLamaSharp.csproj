@@ -44,30 +44,19 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="runtimes/libllama.dll">
+    <None Include="runtimes/llama.dll">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <Link>libllama.dll</Link>
+      <Link>llama.dll</Link>
     </None>
-    <None Include="runtimes/libllama-cuda11.dll">
+    <None Include="runtimes/clblast.dll">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <Link>libllama-cuda11.dll</Link>
+      <Link>clblast.dll</Link>
     </None>
-    <None Include="runtimes/libllama-cuda12.dll">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <Link>libllama-cuda12.dll</Link>
-    </None>
-    <None Include="runtimes/libllama.so">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <Link>libllama.so</Link>
-    </None>
-    <None Include="runtimes/libllama-cuda11.so">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <Link>libllama-cuda11.so</Link>
-    </None>
-    <None Include="runtimes/libllama-cuda12.so">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <Link>libllama-cuda12.so</Link>
-    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Serilog" Version="2.12.0" />
+    <PackageReference Include="SerilogTimings" Version="3.0.1" />
   </ItemGroup>
 
 </Project>
